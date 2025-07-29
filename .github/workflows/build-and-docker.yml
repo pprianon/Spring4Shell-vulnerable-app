@@ -72,7 +72,7 @@ jobs:
           WIZ_ID: ${{ secrets.WIZ_ID }}
           WIZ_SECRET: ${{ secrets.WIZ_SECRET }}
         run: |
-          dagger call --mod git://github.com/pprianon/pprianon-dagger-wizcli.git \
+          dagger call --mod "git@github.com:pprianon/pprianon-dagger-wizcli.git" \
                 docker-scan \
                     --wz_id=env://WIZ_ID \
                     --wz_secret=env://WIZ_SECRET \
