@@ -53,6 +53,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         
+      - name: Start BuildKit daemon
+        run: |
+          docker run -d --name buildkitd --privileged moby/buildkit:latest
+          sleep 10
+          docker ps | grep buildkitd
+        
       - name: Build Docker image
         run: |
           docker build -t spring4shell-vulnerable-app:${{ github.sha }} .
@@ -65,6 +71,7 @@ jobs:
         env:
           WIZ_ID: ${{ secrets.WIZ_ID }}
           WIZ_SECRET: ${{ secrets.WIZ_SECRET }}
+          DAGGER_RUNNER_HOST: docker-container://buildkitd
         run: |
           dagger call --mod "git@github.com:pprianon/pprianon-dagger-wizcli.git#main" \
                 docker-scan \
