@@ -58,6 +58,11 @@ jobs:
           docker run -d --name buildkitd --privileged moby/buildkit:latest
           sleep 10
           docker ps | grep buildkitd
+          
+      - name: Configure Dagger to use BuildKit container
+        run: |
+          export DAGGER_RUNNER_HOST="docker-container://buildkitd"
+          echo "DAGGER_RUNNER_HOST=docker-container://buildkitd" >> $GITHUB_ENV
         
       - name: Build Docker image
         run: |
@@ -71,9 +76,8 @@ jobs:
         env:
           WIZ_ID: ${{ secrets.WIZ_ID }}
           WIZ_SECRET: ${{ secrets.WIZ_SECRET }}
-          DAGGER_RUNNER_HOST: docker-container://buildkitd
         run: |
-          dagger call --mod "git@github.com:pprianon/pprianon-dagger-wizcli.git#main" \
+          dagger --runner-host docker-container://buildkitd call --mod "git://github.com/pprianon/pprianon-dagger-wizcli.git?ref=main" \
                 docker-scan \
                     --wz_id=env://WIZ_ID \
                     --wz_secret=env://WIZ_SECRET \
