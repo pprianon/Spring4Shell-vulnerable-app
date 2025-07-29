@@ -62,21 +62,11 @@ jobs:
           ls -Alh ./build
       
       - name: Run WizCli Docker Scan with Dagger
-        env:
-          WIZ_ID: ${{ secrets.WIZ_ID }}
-          WIZ_SECRET: ${{ secrets.WIZ_SECRET }}
-        run: |
-          dagger call --mod "git@github.com:pprianon/pprianon-dagger-wizcli.git" \
-                docker-scan \
-                    --wz_id=env://WIZ_ID \
-                    --wz_secret=env://WIZ_SECRET \
-                    --image-tar="./build/vulnerable-java-app.tar" \
-                    --image-name="vulnerable-app-spring4shell" \
-                    --no-publish \
-                    --wz-format="human" \
-                    --wz-out-file "vulnerable-app-spring4shell.json;json" \
-                    --wz-out-file "vulnerable-app-spring4shell.txt;human" \
-                    export --path="./docker_scan_results"
+        uses: dagger/dagger-for-github@8.0.0
+        with:
+          module: git@github.com:pprianon/pprianon-dagger-wizcli
+          call: docker-scan --wz_id=env://${{ secrets.WIZ_ID }}  --wz_secret=env://${{ secrets.WIZ_ID }}  --image-tar="./build/vulnerable-java-app.tar"  --image-name="vulnerable-app-spring4shell"  --no-publish --wz-format="human" --wz-out-file "vulnerable-app-spring4shell.json;json" --wz-out-file "vulnerable-app-spring4shell.txt;human" export --path="./docker_scan_results"
+          version: 8.0.0
 
       - name: 📊 Display WizCli Docker Scan results
         shell: bash
