@@ -1,0 +1,73 @@
+name: 🧪 WizCli testings on pprianon/Spring4Shell-vulnerable-app
+on:
+  workflow_dispatch:
+
+jobs:
+  test-pprianon-dagger-wizcli:
+    name: 🛡️ Run a WizCli Docker Scan on pprianon/Spring4Shell-vulnerable-app
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Install Dagger Cli v0.16.3
+        run: |
+          curl -fsSL https://dl.dagger.io/dagger/install.sh | DAGGER_VERSION=0.16.3 BIN_DIR=/usr/local/bin sh
+          dagger version
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup SSH for private repository access
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+      
+      - name: Set up JDK 11
+        uses: actions/setup-java@v4
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+          
+      - name: Cache Maven dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+          
+      - name: Build with Maven
+        run: mvn clean package
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Build Docker image
+        run: |
+          docker build -t spring4shell-vulnerable-app:${{ github.sha }} .
+          docker images
+          mkdir -p ./build
+          docker save spring4shell-vulnerable-app:${{ github.sha }} -o ./build/vulnerable-java-app.tar
+          ls -Alh ./build
+      
+      - name: Run WizCli Docker Scan with Dagger
+        env:
+          WIZ_ID: ${{ secrets.WIZ_ID }}
+          WIZ_SECRET: ${{ secrets.WIZ_SECRET }}
+        run: |
+          dagger call --mod git@github.com:pprianon/pprianon-dagger-wizcli \
+                docker-scan \
+                    --wz_id=env://WIZ_ID \
+                    --wz_secret=env://WIZ_SECRET \
+                    --image-tar="./build/vulnerable-java-app.tar" \
+                    --image-name="vulnerable-app-spring4shell" \
+                    --no-publish \
+                    --wz-format="human" \
+                    --wz-out-file "vulnerable-app-spring4shell.json;json" \
+                    --wz-out-file "vulnerable-app-spring4shell.txt;human" \
+                    export --path="./docker_scan_results"
+
+      - name: 📊 Display WizCli Docker Scan results
+        shell: bash
+        run: |
+          cat ./docker_scan_results/gh_step_summary.md >> "$GITHUB_STEP_SUMMARY"
